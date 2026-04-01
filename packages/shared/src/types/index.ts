@@ -202,3 +202,9 @@ export type {
   PluginJobRunRecord,
   PluginWebhookDeliveryRecord,
 } from "./plugin.js";
+export type {
+  MergeQueueActiveItem,
+  MergeQueueBranchStats,
+  MergeQueueStats,
+  MergeQueueOutcome,
+} from "./merge-queue.js";

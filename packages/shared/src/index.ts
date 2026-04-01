@@ -327,6 +327,10 @@ export type {
   StaticAnalysisConfig,
   StaticAnalysisToolResult,
   StaticAnalysisGateResult,
+  MergeQueueActiveItem,
+  MergeQueueBranchStats,
+  MergeQueueStats,
+  MergeQueueOutcome,
 } from "./types/index.js";
 
 export {

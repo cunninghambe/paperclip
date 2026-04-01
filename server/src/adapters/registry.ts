@@ -54,6 +54,14 @@ import {
   agentConfigurationDoc as openclawGatewayAgentConfigurationDoc,
   models as openclawGatewayModels,
 } from "@paperclipai/adapter-openclaw-gateway";
+import {
+  execute as hermesGatewayExecute,
+  testEnvironment as hermesGatewayTestEnvironment,
+} from "@autogeny/adapter-hermes-gateway/server";
+import {
+  agentConfigurationDoc as hermesGatewayAgentConfigurationDoc,
+  models as hermesGatewayModels,
+} from "@autogeny/adapter-hermes-gateway";
 import { listCodexModels } from "./codex-models.js";
 import { listCursorModels } from "./cursor-models.js";
 import {
@@ -147,6 +155,15 @@ const openclawGatewayAdapter: ServerAdapterModule = {
   agentConfigurationDoc: openclawGatewayAgentConfigurationDoc,
 };
 
+const hermesGatewayAdapter: ServerAdapterModule = {
+  type: "hermes_gateway",
+  execute: hermesGatewayExecute,
+  testEnvironment: hermesGatewayTestEnvironment,
+  models: hermesGatewayModels,
+  supportsLocalAgentJwt: false,
+  agentConfigurationDoc: hermesGatewayAgentConfigurationDoc,
+};
+
 const openCodeLocalAdapter: ServerAdapterModule = {
   type: "opencode_local",
   execute: openCodeExecute,
@@ -198,6 +215,7 @@ const adaptersByType = new Map<string, ServerAdapterModule>(
     geminiLocalAdapter,
     openclawGatewayAdapter,
     hermesLocalAdapter,
+    hermesGatewayAdapter,
     processAdapter,
     httpAdapter,
   ].map((a) => [a.type, a]),
