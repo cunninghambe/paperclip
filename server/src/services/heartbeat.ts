@@ -42,6 +42,7 @@ import {
   sanitizeRuntimeServiceBaseEnv,
 } from "./workspace-runtime.js";
 import { issueService } from "./issues.js";
+import { getPredecessorContributions } from "./sequential-coordinator.js";
 import { executionWorkspaceService, mergeExecutionWorkspaceConfig } from "./execution-workspaces.js";
 import { workspaceOperationService } from "./workspace-operations.js";
 import {
@@ -2096,6 +2097,8 @@ export function heartbeatService(db: Db) {
             assigneeAgentId: issues.assigneeAgentId,
             assigneeAdapterOverrides: issues.assigneeAdapterOverrides,
             executionWorkspaceSettings: issues.executionWorkspaceSettings,
+            processingOrder: issues.processingOrder,
+            processingPosition: issues.processingPosition,
           })
           .from(issues)
           .where(and(eq(issues.id, issueId), eq(issues.companyId, agent.companyId)))
@@ -2107,6 +2110,41 @@ export function heartbeatService(db: Db) {
             issueContext.assigneeAdapterOverrides,
           )
         : null;
+
+    // Sequential mode context injection
+    if (issueContext && issueContext.processingOrder && issueContext.processingPosition != null) {
+      try {
+        const predecessors = await getPredecessorContributions(db, issueContext.id);
+        const order = issueContext.processingOrder as string[];
+        const position = issueContext.processingPosition;
+
+        context.paperclipSequentialMode = {
+          enabled: true,
+          position,
+          totalAgents: order.length,
+          instruction:
+            `You are agent ${position + 1} of ${order.length} processing this task sequentially. ` +
+            `Review the task and all predecessor outputs below. Then:
+` +
+            `(1) Choose a role that adds value given what predecessors have already done.
+` +
+            `(2) If you cannot meaningfully contribute beyond what predecessors have done, ABSTAIN — ` +
+            `post a comment with contributionType "abstain" and a brief reason.
+` +
+            `(3) If you contribute, post a comment with contributionType "output", ` +
+            `your claimed role, and your contribution.`,
+          predecessorOutputs: predecessors.map((p) => ({
+            agent: p.agentName,
+            role: p.claimedRole ?? "unspecified",
+            type: p.contributionType,
+            output: p.body,
+          })),
+        };
+      } catch (err) {
+        // Non-fatal: sequential context injection failed, agent runs without it
+        logger.warn({ issueId: issueContext.id, err }, "Failed to inject sequential context");
+      }
+    }
     const isolatedWorkspacesEnabled = (await instanceSettings.getExperimental()).enableIsolatedWorkspaces;
     const issueExecutionWorkspaceSettings = isolatedWorkspacesEnabled
       ? parseIssueExecutionWorkspaceSettings(issueContext?.executionWorkspaceSettings)

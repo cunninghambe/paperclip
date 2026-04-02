@@ -62,6 +62,7 @@ import {
   Repeat,
   SlidersHorizontal,
   Trash2,
+  Sparkles,
 } from "lucide-react";
 import type { ActivityEvent } from "@paperclipai/shared";
 import type { Agent, Issue, IssueAttachment, IssueComment } from "@paperclipai/shared";
@@ -1063,6 +1064,32 @@ export function IssueDetail() {
           as="h2"
           className="text-xl font-bold"
         />
+
+        {/* Sequential progress bar */}
+        {issue.processingOrder && Array.isArray(issue.processingOrder) && (
+          <div className="border border-border rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="h-4 w-4 text-amber-500" />
+              <span className="text-sm font-medium">Self-Organizing Progress</span>
+              <span className="text-xs text-muted-foreground ml-auto">
+                Agent {Math.min((issue.processingPosition ?? 0) + 1, issue.processingOrder.length)}/{issue.processingOrder.length}
+              </span>
+            </div>
+            <div className="flex gap-1">
+              {issue.processingOrder.map((agentId: string, i: number) => (
+                <div
+                  key={agentId}
+                  className={cn(
+                    "h-2 flex-1 rounded-full",
+                    i < (issue.processingPosition ?? 0) ? "bg-green-500" :
+                    i === (issue.processingPosition ?? 0) ? "bg-amber-500 animate-pulse" :
+                    "bg-muted"
+                  )}
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
         <InlineEditor
           value={issue.description ?? ""}

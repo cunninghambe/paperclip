@@ -1,7 +1,9 @@
 import { Router, type Request, type Response } from "express";
 import multer from "multer";
 import { z } from "zod";
+import { eq } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
+import { issues } from "@paperclipai/db";
 import {
   addIssueCommentSchema,
   createIssueAttachmentMetadataSchema,
@@ -1035,6 +1037,8 @@ export function issueRoutes(db: Db, storage: StorageService) {
       reopen: reopenRequested,
       interrupt: interruptRequested,
       hiddenAt: hiddenAtRaw,
+      contributionType: contribType,
+      claimedRole: claimedRoleVal,
       ...updateFields
     } = req.body;
     let interruptedRunId: string | null = null;
@@ -1153,6 +1157,8 @@ export function issueRoutes(db: Db, storage: StorageService) {
       comment = await svc.addComment(id, commentBody, {
         agentId: actor.agentId ?? undefined,
         userId: actor.actorType === "user" ? actor.actorId : undefined,
+        contributionType: contribType,
+        claimedRole: claimedRoleVal,
       });
 
       await logActivity(db, {
@@ -1175,6 +1181,33 @@ export function issueRoutes(db: Db, storage: StorageService) {
         },
       });
 
+      // If sequential mode and contribution complete, advance the queue
+      if (contribType && (contribType === "output" || contribType === "abstain")) {
+        const issueRow = await db
+          .select({
+            processingOrder: issues.processingOrder,
+            processingPosition: issues.processingPosition,
+            companyId: issues.companyId,
+          })
+          .from(issues)
+          .where(eq(issues.id, id))
+          .limit(1)
+          .then((r) => r[0]);
+
+        if (issueRow?.processingOrder && actor.agentId) {
+          // Only agents can advance sequential queue (not board users)
+          const { advanceSequentialIssue } = await import("../services/sequential-coordinator.js");
+          await advanceSequentialIssue(
+            db,
+            heartbeat,
+            id,
+            issueRow.companyId,
+            actor.agentId,
+            contribType as "output" | "abstain",
+            claimedRoleVal ?? null,
+          );
+        }
+      }
     }
 
     const assigneeChanged = assigneeWillChange;

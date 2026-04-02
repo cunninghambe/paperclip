@@ -189,7 +189,7 @@ describe("POST /api/onboarding/:sessionId/provision", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("provisions team and returns the new companyId", async () => {
-    mockConciergeService.provisionTeam.mockResolvedValue("company-xyz");
+    mockConciergeService.provisionTeam.mockResolvedValue({ companyId: "company-xyz", companyPrefix: "XYZ" });
 
     const res = await request(createApp(boardActor))
       .post("/api/onboarding/session-1/provision")
@@ -200,7 +200,7 @@ describe("POST /api/onboarding/:sessionId/provision", () => {
   });
 
   it("passes custom company name to provisionTeam", async () => {
-    mockConciergeService.provisionTeam.mockResolvedValue("company-xyz");
+    mockConciergeService.provisionTeam.mockResolvedValue({ companyId: "company-xyz", companyPrefix: "XYZ" });
 
     await request(createApp(boardActor))
       .post("/api/onboarding/session-1/provision")
@@ -211,11 +211,12 @@ describe("POST /api/onboarding/:sessionId/provision", () => {
       "user-123",
       expect.any(Function),
       "Acme Corp",
+      undefined,
     );
   });
 
   it("does not pass company name when it is absent", async () => {
-    mockConciergeService.provisionTeam.mockResolvedValue("company-xyz");
+    mockConciergeService.provisionTeam.mockResolvedValue({ companyId: "company-xyz", companyPrefix: "XYZ" });
 
     await request(createApp(boardActor))
       .post("/api/onboarding/session-1/provision")
@@ -226,6 +227,7 @@ describe("POST /api/onboarding/:sessionId/provision", () => {
       "user-123",
       expect.any(Function),
       undefined,
+      undefined,
     );
   });
 
@@ -235,5 +237,50 @@ describe("POST /api/onboarding/:sessionId/provision", () => {
       .send({});
 
     expect(res.status).toBe(403);
+  });
+
+  it("passes coordinationMode to provisionTeam when provided", async () => {
+    mockConciergeService.provisionTeam.mockResolvedValue({ companyId: "company-xyz", companyPrefix: "XYZ" });
+
+    await request(createApp(boardActor))
+      .post("/api/onboarding/session-1/provision")
+      .send({ coordinationMode: "sequential" });
+
+    expect(mockConciergeService.provisionTeam).toHaveBeenCalledWith(
+      "session-1",
+      "user-123",
+      expect.any(Function),
+      undefined,
+      "sequential",
+    );
+  });
+
+  it("ignores invalid coordinationMode values (passes undefined)", async () => {
+    mockConciergeService.provisionTeam.mockResolvedValue({ companyId: "company-xyz", companyPrefix: "XYZ" });
+
+    await request(createApp(boardActor))
+      .post("/api/onboarding/session-1/provision")
+      .send({ coordinationMode: "invalid-mode" });
+
+    // Invalid coordinationMode should result in undefined being passed
+    expect(mockConciergeService.provisionTeam).toHaveBeenCalledWith(
+      "session-1",
+      "user-123",
+      expect.any(Function),
+      undefined,
+      undefined,
+    );
+  });
+
+  it("returns companyId and companyPrefix in provision response", async () => {
+    mockConciergeService.provisionTeam.mockResolvedValue({ companyId: "company-xyz", companyPrefix: "XYZ" });
+
+    const res = await request(createApp(boardActor))
+      .post("/api/onboarding/session-1/provision")
+      .send({});
+
+    expect(res.status).toBe(201);
+    expect(res.body.companyId).toBe("company-xyz");
+    expect(res.body.companyPrefix).toBe("XYZ");
   });
 });

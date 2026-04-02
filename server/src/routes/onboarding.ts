@@ -82,16 +82,26 @@ export function onboardingRoutes(db: Db, storage?: StorageService) {
 
   router.post("/:sessionId/provision", async (req, res) => {
     const userId = resolveUserId(req);
-    const { companyName } = req.body as { companyName?: unknown };
+    const { companyName, coordinationMode } = req.body as {
+      companyName?: unknown;
+      coordinationMode?: unknown;
+    };
 
-    const companyId = await concierge.provisionTeam(
+    // Validate coordinationMode
+    const validModes = ["structured", "sequential", "auto"];
+    const mode = typeof coordinationMode === "string" && validModes.includes(coordinationMode)
+      ? coordinationMode as "structured" | "sequential" | "auto"
+      : undefined;
+
+    const result = await concierge.provisionTeam(
       req.params.sessionId!,
       userId,
       portability.importBundle.bind(portability),
       typeof companyName === "string" && companyName.trim() ? companyName.trim() : undefined,
+      mode,
     );
 
-    res.status(201).json({ companyId });
+    res.status(201).json(result);
   });
 
   return router;

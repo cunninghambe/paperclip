@@ -156,7 +156,13 @@ describeEmbeddedPostgres("semi-formal review service (semi-formal mode)", () => 
   let issueId!: string;
   let projectId!: string;
 
+  // Set a fake API key so tests don't throw before reaching the fetch mock
+  let originalApiKey: string | undefined;
+
   beforeAll(async () => {
+    originalApiKey = process.env.ANTHROPIC_API_KEY;
+    process.env.ANTHROPIC_API_KEY = "sk-ant-test-key-for-testing";
+
     tempDb = await startEmbeddedPostgresTestDatabase("paperclip-semi-formal-review-sf-");
     db = createDb(tempDb.connectionString);
 
@@ -191,6 +197,7 @@ describeEmbeddedPostgres("semi-formal review service (semi-formal mode)", () => 
 
   afterAll(async () => {
     await tempDb?.cleanup();
+    process.env.ANTHROPIC_API_KEY = originalApiKey;
   });
 
   it("calls the LLM and stores review comment for semi-formal mode", async () => {

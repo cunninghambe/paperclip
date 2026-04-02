@@ -23,6 +23,8 @@ import {
 } from "@paperclipai/db";
 import { extractAgentMentionIds, extractProjectMentionIds } from "@paperclipai/shared";
 import { conflict, notFound, unprocessable } from "../errors.js";
+import { resolveCoordinationMode } from "./coordination-mode.js";
+import { generateProcessingOrder } from "./sequential-coordinator.js";
 import {
   defaultIssueExecutionWorkspaceSettingsForProject,
   gateProjectExecutionWorkspacePolicy,
@@ -1048,6 +1050,43 @@ export function issueService(db: Db) {
           values.cancelledAt = new Date();
         }
 
+        // Resolve coordination mode for sequential processing
+        const [companyRow] = await tx
+          .select({ coordinationMode: companies.coordinationMode })
+          .from(companies)
+          .where(eq(companies.id, companyId));
+
+        if (companyRow && companyRow.coordinationMode !== "structured") {
+          // Get active agent models from adapterConfig
+          const activeAgents = await tx
+            .select({
+              id: agents.id,
+              adapterConfig: agents.adapterConfig,
+            })
+            .from(agents)
+            .where(and(eq(agents.companyId, companyId), eq(agents.status, "active")));
+
+          const agentModels = activeAgents.map((a) => {
+            const config = a.adapterConfig as Record<string, unknown> | null;
+            return (config?.model as string) ?? "unknown";
+          });
+
+          const resolvedMode = resolveCoordinationMode(
+            companyRow.coordinationMode as "structured" | "sequential" | "auto",
+            agentModels,
+          );
+
+          if (resolvedMode === "sequential") {
+            const order = await generateProcessingOrder(tx, companyId);
+            if (order.length > 0) {
+              values.processingOrder = order;
+              values.processingPosition = 0;
+              values.processingStartedAt = new Date();
+              values.assigneeAgentId = order[0]; // First agent in sequence
+            }
+          }
+        }
+
         const [issue] = await tx.insert(issues).values(values).returning();
         if (inputLabelIds) {
           await syncIssueLabels(issue.id, companyId, inputLabelIds, tx);
@@ -1542,7 +1581,16 @@ export function issueService(db: Db) {
           return comment ? redactIssueComment(comment, censorUsernameInLogs) : null;
         })),
 
-    addComment: async (issueId: string, body: string, actor: { agentId?: string; userId?: string }) => {
+    addComment: async (
+      issueId: string,
+      body: string,
+      actor: {
+        agentId?: string;
+        userId?: string;
+        contributionType?: string;
+        claimedRole?: string;
+      },
+    ) => {
       const issue = await db
         .select({ companyId: issues.companyId })
         .from(issues)
@@ -1563,6 +1611,8 @@ export function issueService(db: Db) {
           authorAgentId: actor.agentId ?? null,
           authorUserId: actor.userId ?? null,
           body: redactedBody,
+          contributionType: actor.contributionType ?? null,
+          claimedRole: actor.claimedRole ?? null,
         })
         .returning();
 

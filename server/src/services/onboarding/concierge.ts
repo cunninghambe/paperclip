@@ -10,7 +10,7 @@
  */
 
 import { and, eq, ne } from "drizzle-orm";
-import { onboardingSessions } from "@paperclipai/db";
+import { onboardingSessions, companies } from "@paperclipai/db";
 import type { OnboardingDiscoveryData, OnboardingRecommendationData } from "@paperclipai/db";
 import type { Db } from "@paperclipai/db";
 import type { CompanyPortabilityImport, CompanyPortabilityImportResult } from "@paperclipai/shared";
@@ -338,7 +338,8 @@ export function onboardingConciergeService(db: Db) {
     userId: string,
     importBundle: ImportBundleFn,
     customCompanyName?: string,
-  ): Promise<string> {
+    coordinationMode?: "structured" | "sequential" | "auto",
+  ): Promise<{ companyId: string; companyPrefix: string }> {
     const rows = await db
       .select()
       .from(onboardingSessions)
@@ -390,6 +391,13 @@ export function onboardingConciergeService(db: Db) {
 
     const result = await importBundle(importInput, userId);
 
+    // Set coordinationMode if provided and not default
+    if (coordinationMode && coordinationMode !== "structured") {
+      await db.update(companies)
+        .set({ coordinationMode, updatedAt: new Date() })
+        .where(eq(companies.id, result.company.id));
+    }
+
     await db
       .update(onboardingSessions)
       .set({
@@ -399,7 +407,7 @@ export function onboardingConciergeService(db: Db) {
       })
       .where(eq(onboardingSessions.id, sessionId));
 
-    return result.company.id;
+    return { companyId: result.company.id, companyPrefix: result.company.issuePrefix };
   }
 
   // -------------------------------------------------------------------------

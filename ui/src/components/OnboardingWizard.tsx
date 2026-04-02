@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { cn } from "../lib/utils";
+import { OnboardingChat } from "./OnboardingChat";
 import {
   extractModelName,
   extractProviderIdWithFallback
@@ -64,6 +65,7 @@ type AdapterType =
   | "codex_local"
   | "gemini_local"
   | "hermes_local"
+  | "hermes_gateway"
   | "opencode_local"
   | "pi_local"
   | "cursor"
@@ -211,6 +213,7 @@ export function OnboardingWizard() {
     adapterType === "codex_local" ||
     adapterType === "gemini_local" ||
     adapterType === "hermes_local" ||
+                    adapterType === "hermes_gateway" ||
     adapterType === "opencode_local" ||
     adapterType === "pi_local" ||
     adapterType === "cursor";
@@ -674,7 +677,19 @@ export function OnboardingWizard() {
               </div>
 
               {/* Step content */}
-              {step === 1 && (
+              {step === 1 && !existingCompanyId && (
+                <OnboardingChat
+                  onComplete={(companyId, companyPrefix) => {
+                    setCreatedCompanyId(companyId);
+                    setCreatedCompanyPrefix(companyPrefix);
+                    setSelectedCompanyId(companyId);
+                    queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
+                    // Skip to step 4 (launch) since concierge provisioned everything
+                    setStep(4);
+                  }}
+                />
+              )}
+              {step === 1 && existingCompanyId && (
                 <div className="space-y-5">
                   <div className="flex items-center gap-3 mb-1">
                     <div className="bg-muted/50 p-2">
@@ -914,6 +929,7 @@ export function OnboardingWizard() {
                     adapterType === "codex_local" ||
                     adapterType === "gemini_local" ||
                     adapterType === "hermes_local" ||
+                    adapterType === "hermes_gateway" ||
                     adapterType === "opencode_local" ||
                     adapterType === "pi_local" ||
                     adapterType === "cursor") && (

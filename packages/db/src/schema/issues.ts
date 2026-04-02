@@ -57,6 +57,9 @@ export const issues = pgTable(
     hiddenAt: timestamp("hidden_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    processingOrder: jsonb("processing_order").$type<string[]>(),
+    processingPosition: integer("processing_position"),
+    processingStartedAt: timestamp("processing_started_at", { withTimezone: true }),
   },
   (table) => ({
     companyStatusIdx: index("issues_company_status_idx").on(table.companyId, table.status),

@@ -38,6 +38,7 @@ export function CompanySettings() {
   const [brandColor, setBrandColor] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
   const [logoUploadError, setLogoUploadError] = useState<string | null>(null);
+  const [coordinationMode, setCoordinationMode] = useState<string>("structured");
 
   // Sync local state from selected company
   useEffect(() => {
@@ -46,6 +47,7 @@ export function CompanySettings() {
     setDescription(selectedCompany.description ?? "");
     setBrandColor(selectedCompany.brandColor ?? "");
     setLogoUrl(selectedCompany.logoUrl ?? "");
+    setCoordinationMode((selectedCompany as any).coordinationMode ?? "structured");
   }, [selectedCompany]);
 
   const [inviteError, setInviteError] = useState<string | null>(null);
@@ -57,13 +59,15 @@ export function CompanySettings() {
     !!selectedCompany &&
     (companyName !== selectedCompany.name ||
       description !== (selectedCompany.description ?? "") ||
-      brandColor !== (selectedCompany.brandColor ?? ""));
+      brandColor !== (selectedCompany.brandColor ?? "") ||
+      coordinationMode !== ((selectedCompany as any).coordinationMode ?? "structured"));
 
   const generalMutation = useMutation({
     mutationFn: (data: {
       name: string;
       description: string | null;
       brandColor: string | null;
+      coordinationMode?: string;
     }) => companiesApi.update(selectedCompanyId!, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
@@ -216,7 +220,8 @@ export function CompanySettings() {
     generalMutation.mutate({
       name: companyName.trim(),
       description: description.trim() || null,
-      brandColor: brandColor || null
+      brandColor: brandColor || null,
+      coordinationMode: coordinationMode as "structured" | "sequential" | "auto",
     });
   }
 
@@ -252,6 +257,20 @@ export function CompanySettings() {
               placeholder="Optional company description"
               onChange={(e) => setDescription(e.target.value)}
             />
+          </Field>
+          <Field
+            label="Team Coordination Mode"
+            hint="Controls how agents collaborate on tasks."
+          >
+            <select
+              value={coordinationMode}
+              onChange={(e) => setCoordinationMode(e.target.value)}
+              className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm outline-none"
+            >
+              <option value="auto">Auto — platform picks based on model capabilities</option>
+              <option value="sequential">Self-Organizing — agents pick their own roles (research-backed, 14% quality boost)</option>
+              <option value="structured">Managed Team — fixed role assignments</option>
+            </select>
           </Field>
         </div>
       </div>

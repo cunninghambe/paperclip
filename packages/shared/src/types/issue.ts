@@ -146,6 +146,9 @@ export interface Issue {
   isUnreadForMe?: boolean;
   createdAt: Date;
   updatedAt: Date;
+  processingOrder?: string[] | null;
+  processingPosition?: number | null;
+  processingStartedAt?: Date | null;
 }
 
 export interface IssueComment {
@@ -155,6 +158,8 @@ export interface IssueComment {
   authorAgentId: string | null;
   authorUserId: string | null;
   body: string;
+  contributionType?: string | null;
+  claimedRole?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
