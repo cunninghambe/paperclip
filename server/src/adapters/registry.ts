@@ -213,15 +213,6 @@ const hermesLocalAdapter: ServerAdapterModule = {
   detectModel: () => detectModelFromHermes(),
 };
 
-const hermesGatewayAdapter: ServerAdapterModule = {
-  type: "hermes_gateway",
-  execute: hermesGatewayExecute,
-  testEnvironment: hermesGatewayTestEnvironment,
-  models: hermesGatewayModels,
-  supportsLocalAgentJwt: false,
-  agentConfigurationDoc: hermesGatewayAgentConfigurationDoc,
-};
-
 const adaptersByType = new Map<string, ServerAdapterModule>(
   [
     claudeLocalAdapter,
