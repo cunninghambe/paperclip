@@ -57,3 +57,4 @@ export { pluginJobs, pluginJobRuns } from "./plugin_jobs.js";
 export { pluginWebhookDeliveries } from "./plugin_webhooks.js";
 export { pluginLogs } from "./plugin_logs.js";
 export { managedOpenRouterKeys } from "./managed_openrouter_keys.js";
+export { channelRoutings } from "./channel_routings.js";
