@@ -1,55 +1,29 @@
 /**
- * Unified outbound message router.
+ * Outbound Router
  *
- * Agents call POST /api/platform/outbound/:agentId with a channel + target +
- * content, and this router delivers via the appropriate sender
- * (Telegram, Slack, Discord) based on the stored channel_routing record.
- *
- * Channel-specific credential sources:
- *   - telegram : botToken stored in the routing record
- *   - slack    : botToken stored in the routing record
- *   - discord  : webhookUrl (with SSRF guard) stored in the routing record;
- *                fallback to PLATFORM_DISCORD_BOT_TOKEN env var + config.channelId
+ * Routes outbound messages from agents to the correct channel sender
+ * (Telegram, Slack, Discord).
  */
 import { eq, and } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import { agents, channelRoutings } from "@paperclipai/db";
-import { logger } from "../../middleware/logger.js";
 import { sendTelegramMessage } from "./telegram-sender.js";
 import { sendSlackMessage } from "./slack-sender.js";
-import { sendDiscordMessage } from "./discord-sender.js";
+import { sendDiscordMessage, sendDiscordWebhook } from "./discord-sender.js";
+import { logger } from "../../middleware/logger.js";
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+/** Global content length cap across all channels */
+const MAX_CONTENT_LENGTH = 4096;
+
+/** Discord-specific content length limit */
 const DISCORD_MAX_CONTENT = 2000;
 
-// ─── SSRF guard: allowed Discord webhook hostnames ────────────────────────────
-const DISCORD_ALLOWED_HOSTNAMES = new Set(["discord.com", "discordapp.com"]);
+/** Required URL prefix for Discord webhooks (SSRF prevention) */
+const DISCORD_WEBHOOK_HOST = "https://discord.com/";
 
-function validateDiscordWebhookUrl(url: string): { valid: true; parsed: URL } | { valid: false; error: string } {
-  let parsed: URL;
-  try {
-    parsed = new URL(url);
-  } catch {
-    return { valid: false, error: "invalid webhookUrl format" };
-  }
-  if (!DISCORD_ALLOWED_HOSTNAMES.has(parsed.hostname)) {
-    return { valid: false, error: `webhookUrl must point to discord.com (got: ${parsed.hostname})` };
-  }
-  if (parsed.protocol !== "https:") {
-    return { valid: false, error: "webhookUrl must use HTTPS" };
-  }
-  return { valid: true, parsed };
-}
-
-// ─── Request / Result types ───────────────────────────────────────────────────
-
-export interface OutboundMessageRequest {
-  /** Target channel: "telegram" | "slack" | "discord" */
-  channel: string;
-  /** Channel-specific target identifier (chatId, Slack channelId, Discord channelKey) */
-  target: string;
-  /** Text content to deliver */
-  content: string;
-}
+// ─── Result types ─────────────────────────────────────────────────────────────
 
 export type OutboundResult =
   | { status: "sent"; channel: string }
@@ -62,30 +36,22 @@ export type OutboundResult =
 
 const SUPPORTED_CHANNELS = new Set(["telegram", "slack", "discord"]);
 
-// ─── Router ───────────────────────────────────────────────────────────────────
+// ─── Core router ─────────────────────────────────────────────────────────────
 
 /**
- * Route an outbound message from an agent to the correct channel.
- *
- * Validates:
- * 1. Channel is one of: telegram, slack, discord
- * 2. Agent exists
- * 3. A channel_routings record exists for (agentId, channel, target)
- * 4. The record has required credentials
- *
- * Side effect: updates agent.lastHeartbeatAt to signal liveness.
+ * Handle an outbound message request.
+ * - Verifies agent exists in DB
+ * - Validates channel is supported
+ * - Looks up routing record for (agentId, channel, target)
+ * - Routes to the correct sender
+ * - Updates agent lastHeartbeatAt on success
  */
 export async function handleOutboundMessage(
   db: Db,
   agentId: string,
-  req: OutboundMessageRequest,
+  opts: { channel: string; target: string; content: string },
 ): Promise<OutboundResult> {
-  const { channel, target, content } = req;
-
-  // 0. Validate channel type
-  if (!SUPPORTED_CHANNELS.has(channel)) {
-    return { status: "unsupported_channel", channel };
-  }
+  const { channel, target, content } = opts;
 
   // 1. Verify agent exists
   const agent = await db
@@ -96,17 +62,21 @@ export async function handleOutboundMessage(
     .then((rows) => rows[0] ?? null);
 
   if (!agent) {
-    logger.warn({ agentId }, "outbound-router: agent not found");
     return { status: "no_agent" };
   }
 
-  // 2. Look up routing record
+  // 2. Validate channel is supported
+  if (!SUPPORTED_CHANNELS.has(channel)) {
+    return { status: "unsupported_channel", channel };
+  }
+
+  // 3. Look up routing record for (agentId, channel, target)
   const routing = await db
     .select({
       botToken: channelRoutings.botToken,
       webhookUrl: channelRoutings.webhookUrl,
       channelKey: channelRoutings.channelKey,
-      metadata: channelRoutings.metadata,
+      config: channelRoutings.config,
     })
     .from(channelRoutings)
     .where(
@@ -120,90 +90,64 @@ export async function handleOutboundMessage(
     .then((rows) => rows[0] ?? null);
 
   if (!routing) {
-    logger.warn({ agentId, channel, target }, "outbound-router: no routing record found");
     return { status: "no_routing" };
   }
 
-  // 3. Deliver via the correct sender
+  // 4. Global content length cap
+  if (content.length > MAX_CONTENT_LENGTH) {
+    return {
+      status: "error",
+      error: `Content exceeds maximum length of ${MAX_CONTENT_LENGTH} characters`,
+    };
+  }
+
   try {
+    // 5. Route to the correct sender
     if (channel === "telegram") {
       if (!routing.botToken) {
-        return { status: "error", error: "telegram routing is missing botToken" };
+        return { status: "error", error: "Telegram routing is missing botToken" };
       }
       await sendTelegramMessage(routing.botToken, target, content);
-
     } else if (channel === "slack") {
       if (!routing.botToken) {
-        return { status: "error", error: "slack routing is missing botToken" };
+        return { status: "error", error: "Slack routing is missing botToken" };
       }
       await sendSlackMessage(routing.botToken, target, content);
-
     } else if (channel === "discord") {
+      // Discord-specific content cap (stricter than global)
       if (content.length > DISCORD_MAX_CONTENT) {
         return {
           status: "error",
-          error: `discord content exceeds ${DISCORD_MAX_CONTENT} character limit`,
+          error: `Discord content exceeds maximum length of ${DISCORD_MAX_CONTENT} characters`,
         };
       }
       if (routing.webhookUrl) {
-        // SSRF guard: only permit legitimate Discord webhook URLs
-        const check = validateDiscordWebhookUrl(routing.webhookUrl);
-        if (!check.valid) {
-          return { status: "error", error: `discord routing: ${check.error}` };
-        }
-        await sendDiscordWebhook(routing.webhookUrl, content);
-      } else {
-        // Fallback: use platform bot token + channelId from config
-        const discordBotToken = process.env["PLATFORM_DISCORD_BOT_TOKEN"];
-        if (!discordBotToken) {
+        // SSRF prevention: only allow webhook URLs on discord.com
+        if (!routing.webhookUrl.startsWith(DISCORD_WEBHOOK_HOST)) {
           return {
             status: "error",
-            error: "PLATFORM_DISCORD_BOT_TOKEN is not configured and no webhookUrl stored",
+            error: `Discord webhook URL must start with ${DISCORD_WEBHOOK_HOST}`,
           };
         }
-        const metadata = routing.metadata as Record<string, unknown> | null | undefined;
-        const channelId = (metadata?.["channelId"] as string | undefined) ?? null;
-        if (!channelId) {
-          return { status: "error", error: "discord routing config is missing channelId" };
-        }
-        await sendDiscordMessage(discordBotToken, channelId, content);
+        await sendDiscordWebhook(routing.webhookUrl, content);
+      } else if (routing.botToken) {
+        await sendDiscordMessage(routing.botToken, target, content);
+      } else {
+        return { status: "error", error: "Discord routing is missing botToken or webhookUrl" };
       }
-    } else {
-      // Unreachable due to SUPPORTED_CHANNELS guard
-      return { status: "unsupported_channel", channel };
     }
 
-    // 4. Update agent.lastHeartbeatAt to signal liveness
+    // 6. Update agent lastHeartbeatAt to record activity
     await db
       .update(agents)
-      .set({ lastHeartbeatAt: new Date(), updatedAt: new Date() })
+      .set({ lastHeartbeatAt: new Date() })
       .where(eq(agents.id, agentId));
 
+    logger.info({ agentId, channel, target }, "outbound: message sent successfully");
     return { status: "sent", channel };
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
-    logger.error({ error, agentId, channel, target }, "outbound-router: send failed");
+    logger.error({ agentId, channel, target, error }, "outbound: send failed");
     return { status: "error", error };
   }
-}
-
-// ─── Inline webhook helper (avoids adding yet another sender module) ──────────
-
-async function sendDiscordWebhook(webhookUrl: string, content: string): Promise<void> {
-  let res: Response;
-  try {
-    res = await fetch(webhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content }),
-      signal: AbortSignal.timeout(10_000),
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    throw new Error(`Discord webhook network error: ${message}`);
-  }
-  // Discord returns 204 No Content on success
-  if (res.status === 204 || res.ok) return;
-  const body = await res.text().catch(() => "");
-  throw new Error(`Discord webhook error ${res.status}: ${body}`);
 }

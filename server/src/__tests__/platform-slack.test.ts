@@ -257,3 +257,78 @@ describe("sendSlackMessage", () => {
     vi.unstubAllGlobals();
   });
 });
+
+// ─── POST /api/platform/slack/provision ──────────────────────────────────────
+
+describe("POST /api/platform/slack/provision", () => {
+  const mockDb = {} as Parameters<typeof slackPlatformRoutes>[0];
+
+  const mockProvisionUserWorkspace = vi.hoisted(() => vi.fn());
+
+  vi.mock("../services/platform/slack-workspace.js", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("../services/platform/slack-workspace.js")>();
+    return { ...actual, provisionUserWorkspace: mockProvisionUserWorkspace };
+  });
+
+  function buildApp() {
+    const app = express();
+    app.use(express.json());
+    app.use("/api/platform/slack", slackPlatformRoutes(mockDb));
+    app.use(errorHandler);
+    return app;
+  }
+
+  beforeEach(() => {
+    mockProvisionUserWorkspace.mockClear();
+    vi.stubEnv("PLATFORM_INTERNAL_SECRET", "test-internal-secret");
+  });
+
+  it("returns 200 with provision result on success", async () => {
+    mockProvisionUserWorkspace.mockResolvedValue({
+      channelId: "C123",
+      channelName: "autogeny-alice",
+      routingId: "routing-uuid",
+      alreadyExisted: false,
+    });
+
+    const res = await request(buildApp())
+      .post("/api/platform/slack/provision")
+      .set("x-platform-internal-secret", "test-internal-secret")
+      .send({ userId: "u1", companyId: "c1", slackUserId: "SU1", agentId: "a1" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.channelId).toBe("C123");
+    expect(mockProvisionUserWorkspace).toHaveBeenCalledOnce();
+  });
+
+  it("returns 400 when required fields are missing", async () => {
+    const res = await request(buildApp())
+      .post("/api/platform/slack/provision")
+      .set("x-platform-internal-secret", "test-internal-secret")
+      .send({ userId: "u1" });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 401 when internal secret is wrong", async () => {
+    const res = await request(buildApp())
+      .post("/api/platform/slack/provision")
+      .set("x-platform-internal-secret", "wrong-secret")
+      .send({ userId: "u1", companyId: "c1", slackUserId: "SU1", agentId: "a1" });
+
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 500 when provisioning throws", async () => {
+    mockProvisionUserWorkspace.mockRejectedValue(new Error("Slack API error"));
+
+    const res = await request(buildApp())
+      .post("/api/platform/slack/provision")
+      .set("x-platform-internal-secret", "test-internal-secret")
+      .send({ userId: "u1", companyId: "c1", slackUserId: "SU1", agentId: "a1" });
+
+    expect(res.status).toBe(500);
+    expect(res.body.error).toContain("Slack API error");
+  });
+});

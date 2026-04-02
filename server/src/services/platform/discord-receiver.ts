@@ -147,6 +147,15 @@ export async function handleDiscordInteraction(
     return { status: 401, body: { error: "Missing signature headers" } };
   }
 
+  // Replay-attack guard: Discord requires the timestamp to be within 5 seconds
+  // of the server clock. Without this check a captured valid request can be
+  // replayed indefinitely as a heartbeat trigger.
+  const nowSec = Math.floor(Date.now() / 1000);
+  const tsSec = parseInt(timestamp, 10);
+  if (isNaN(tsSec) || Math.abs(nowSec - tsSec) > 5) {
+    return { status: 401, body: { error: "Request timestamp out of range" } };
+  }
+
   if (!validateDiscordSignature(rawBody, timestamp, signature, publicKey)) {
     return { status: 401, body: { error: "Invalid request signature" } };
   }

@@ -36,6 +36,11 @@ export const channelRoutings = pgTable(
      * Discord: { categoryId, webhookId }
      */
     metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    /**
+     * Structured channel configuration (jsonb).
+     * Added by migration 0049. Used for channel-specific settings.
+     */
+    config: jsonb("config").$type<Record<string, unknown>>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
