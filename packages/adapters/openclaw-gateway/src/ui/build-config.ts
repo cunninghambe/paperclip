@@ -14,7 +14,15 @@ function parseJsonObject(text: string): Record<string, unknown> | null {
 
 export function buildOpenClawGatewayConfig(v: CreateConfigValues): Record<string, unknown> {
   const ac: Record<string, unknown> = {};
-  if (v.url) ac.url = v.url;
+  // Default gateway URL from platform env if user did not provide one
+  const defaultUrl = typeof globalThis.process !== "undefined"
+    ? (globalThis.process.env?.OPENCLAW_GATEWAY_URL ?? "")
+    : "";
+  const defaultToken = typeof globalThis.process !== "undefined"
+    ? (globalThis.process.env?.OPENCLAW_GATEWAY_TOKEN ?? "")
+    : "";
+  ac.url = v.url || defaultUrl;
+  if (defaultToken && !v.url) ac.authToken = defaultToken;
   ac.timeoutSec = 120;
   ac.waitTimeoutMs = 120000;
   ac.sessionKeyStrategy = "issue";

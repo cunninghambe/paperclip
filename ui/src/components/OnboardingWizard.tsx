@@ -888,6 +888,9 @@ export function OnboardingWizard() {
                             onClick={() => {
                               const nextType = opt.value as AdapterType;
                               setAdapterType(nextType);
+                              if (nextType === "openclaw_gateway" && !url) {
+                                setUrl("ws://host.docker.internal:4200");
+                              }
                               if (nextType === "gemini_local" && !model) {
                                 setModel(DEFAULT_GEMINI_LOCAL_MODEL);
                                 return;
@@ -1156,7 +1159,7 @@ export function OnboardingWizard() {
                         className="w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm font-mono outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50"
                         placeholder={
                           adapterType === "openclaw_gateway"
-                            ? "ws://127.0.0.1:18789"
+                            ? "ws://host.docker.internal:4200 (auto-configured)"
                             : "https://..."
                         }
                         value={url}
