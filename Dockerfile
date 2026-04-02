@@ -49,6 +49,7 @@ RUN pnpm --filter @paperclipai/ui build
 RUN pnpm --filter @paperclipai/plugin-sdk build
 RUN pnpm --filter @paperclipai/adapter-hermes-gateway build
 RUN pnpm --filter @paperclipai/server build
+RUN bash scripts/patch-hermes-adapter.sh
 RUN test -f server/dist/index.js || (echo "ERROR: server build output missing" && exit 1)
 
 FROM base AS production

@@ -1,0 +1,12 @@
+diff --git a/dist/server/execute.js b/dist/server/execute.js
+--- a/dist/server/execute.js
++++ b/dist/server/execute.js
+@@ -291,6 +291,8 @@
+     const env = {
+         ...process.env,
+         ...buildPaperclipEnv(ctx.agent),
++        ...(ctx.authToken ? { PAPERCLIP_API_KEY: ctx.authToken } : {}),
++        ...(ctx.runId ? { PAPERCLIP_RUN_ID: ctx.runId } : {}),
+     };
+     if (ctx.runId)
+         env.PAPERCLIP_RUN_ID = ctx.runId;
