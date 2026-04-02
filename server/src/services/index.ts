@@ -31,8 +31,9 @@ export { publishLiveEvent, subscribeCompanyLiveEvents } from "./live-events.js";
 export { reconcilePersistedRuntimeServicesOnStartup, restartDesiredRuntimeServicesOnStartup } from "./workspace-runtime.js";
 export { createStorageServiceFromConfig, getStorageService } from "../storage/index.js";
 export { managedOpenRouterService } from "./managed-openrouter.js";
-
-export { runStaticAnalysisGate, readStaticAnalysisConfig } from "./static-analysis-gate.js";export {
+export { runSemiFormalReview, runReviewIfEnabled, type SemiFormalReviewParams, type SemiFormalReviewResult } from "./semi-formal-review.js";
+export { runStaticAnalysisGate, readStaticAnalysisConfig } from "./static-analysis-gate.js";
+export {
   enqueueMerge,
   getMergeQueueStats,
   resetMergeRounds,
