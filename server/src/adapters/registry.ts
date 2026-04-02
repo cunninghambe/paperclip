@@ -1,5 +1,4 @@
-REMOVED bad @autogeny block
-odule } from "./types.js";
+import type { ServerAdapterModule } from "./types.js";
 import { getAdapterSessionManagement } from "@paperclipai/adapter-utils";
 import {
   execute as claudeExecute,
