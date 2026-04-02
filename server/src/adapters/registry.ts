@@ -1,4 +1,5 @@
-import type { ServerAdapterModule } from "./types.js";
+REMOVED bad @autogeny block
+odule } from "./types.js";
 import { getAdapterSessionManagement } from "@paperclipai/adapter-utils";
 import {
   execute as claudeExecute,
@@ -54,14 +55,6 @@ import {
   agentConfigurationDoc as openclawGatewayAgentConfigurationDoc,
   models as openclawGatewayModels,
 } from "@paperclipai/adapter-openclaw-gateway";
-import {
-  execute as hermesGatewayExecute,
-  testEnvironment as hermesGatewayTestEnvironment,
-} from "@autogeny/adapter-hermes-gateway/server";
-import {
-  agentConfigurationDoc as hermesGatewayAgentConfigurationDoc,
-  models as hermesGatewayModels,
-} from "@autogeny/adapter-hermes-gateway";
 import { listCodexModels } from "./codex-models.js";
 import { listCursorModels } from "./cursor-models.js";
 import {
