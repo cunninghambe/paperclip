@@ -20,6 +20,7 @@ export const companies = pgTable(
     isSystem: boolean("is_system").notNull().default(false),
     reviewMode: text("review_mode").notNull().default("standard"),
     coordinationMode: text("coordination_mode").notNull().default("structured"),
+    credentialDir: text("credential_dir"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

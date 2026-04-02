@@ -1,7 +1,17 @@
 export const type = "openclaw_gateway";
 export const label = "OpenClaw Gateway";
 
-export const models: { id: string; label: string }[] = [];
+export const models: { id: string; label: string }[] = [
+  { id: "anthropic/claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
+  { id: "anthropic/claude-opus-4-6", label: "Claude Opus 4.6" },
+  { id: "anthropic/claude-haiku-4-5", label: "Claude Haiku 4.5" },
+  { id: "openai/gpt-4o", label: "GPT-4o" },
+  { id: "openai/o3-mini", label: "o3-mini" },
+  { id: "google/gemini-2.5-pro-preview", label: "Gemini 2.5 Pro" },
+  { id: "google/gemini-2.5-flash-preview:thinking", label: "Gemini 2.5 Flash (Thinking)" },
+  { id: "deepseek/deepseek-chat-v3-0324:free", label: "DeepSeek V3 (Free)" },
+  { id: "meta-llama/llama-4-maverick:free", label: "Llama 4 Maverick (Free)" },
+];
 
 export const agentConfigurationDoc = `# openclaw_gateway agent configuration
 

@@ -1076,6 +1076,11 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   };
   delete agentParams.text;
 
+  const configuredModel = nonEmpty(ctx.config.model);
+  if (configuredModel && !nonEmpty(agentParams.model as string | null | undefined)) {
+    agentParams.model = configuredModel;
+  }
+
   const configuredAgentId = nonEmpty(ctx.config.agentId);
   if (configuredAgentId && !nonEmpty(agentParams.agentId)) {
     agentParams.agentId = configuredAgentId;

@@ -65,7 +65,6 @@ type AdapterType =
   | "codex_local"
   | "gemini_local"
   | "hermes_local"
-  | "hermes_gateway"
   | "opencode_local"
   | "pi_local"
   | "cursor"
@@ -213,7 +212,6 @@ export function OnboardingWizard() {
     adapterType === "codex_local" ||
     adapterType === "gemini_local" ||
     adapterType === "hermes_local" ||
-                    adapterType === "hermes_gateway" ||
     adapterType === "opencode_local" ||
     adapterType === "pi_local" ||
     adapterType === "cursor";
@@ -924,7 +922,6 @@ export function OnboardingWizard() {
                     adapterType === "codex_local" ||
                     adapterType === "gemini_local" ||
                     adapterType === "hermes_local" ||
-                    adapterType === "hermes_gateway" ||
                     adapterType === "opencode_local" ||
                     adapterType === "pi_local" ||
                     adapterType === "cursor") && (

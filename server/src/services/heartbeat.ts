@@ -2613,6 +2613,28 @@ export function heartbeatService(db: Db) {
         const logEntry = formatRuntimeWorkspaceWarningLog(warning);
         await onLog(logEntry.stream, logEntry.chunk);
       }
+      // Per-company credential directory isolation
+      // User-configured env values take priority (spread user env last)
+      const credDir = `/paperclip/credentials/${agent.companyId}`;
+      const existingEnv = parseObject(resolvedConfig.env) as Record<string, unknown>;
+      let credDirReady = false;
+      try {
+        await fs.mkdir(`${credDir}/claude`, { recursive: true });
+        await fs.mkdir(`${credDir}/hermes`, { recursive: true });
+        await fs.mkdir(`${credDir}/openclaw`, { recursive: true });
+        credDirReady = true;
+      } catch {
+        // Non-fatal — skip credential dir injection if mkdir fails
+      }
+      if (credDirReady) {
+        // Defaults spread first; user-configured values override them
+        resolvedConfig.env = {
+          CLAUDE_CONFIG_DIR: `${credDir}/claude`,
+          HERMES_HOME: `${credDir}/hermes`,
+          OPENCLAW_STATE_DIR: `${credDir}/openclaw`,
+          ...existingEnv,
+        };
+      }
       const adapterEnv = Object.fromEntries(
         Object.entries(parseObject(resolvedConfig.env)).filter(
           (entry): entry is [string, string] => typeof entry[0] === "string" && typeof entry[1] === "string",

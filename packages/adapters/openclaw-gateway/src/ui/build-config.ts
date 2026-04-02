@@ -26,6 +26,7 @@ export function buildOpenClawGatewayConfig(v: CreateConfigValues): Record<string
   ac.timeoutSec = 120;
   ac.waitTimeoutMs = 120000;
   ac.sessionKeyStrategy = "issue";
+  if (v.model) ac.model = v.model;
   ac.role = "operator";
   ac.scopes = ["operator.admin"];
   const payloadTemplate = parseJsonObject(v.payloadTemplateJson ?? "");
