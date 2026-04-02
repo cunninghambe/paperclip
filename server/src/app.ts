@@ -32,6 +32,9 @@ import { pluginRoutes } from "./routes/plugins.js";
 import { pluginUiStaticRoutes } from "./routes/plugin-ui-static.js";
 import { authBridgeRouter } from "./routes/auth-bridge.js";
 import { discordWebhookRoutes } from "./routes/platform/discord-webhook.js";
+import { slackPlatformRoutes } from "./routes/platform/slack.js";
+import { telegramPlatformRoutes } from "./routes/platform/telegram.js";
+import { outboundRoutes } from "./routes/platform/outbound.js";
 import { platformSkillRoutes } from "./routes/platform-skills.js";
 import { applyUiBranding } from "./ui-branding.js";
 import { logger } from "./middleware/logger.js";
@@ -136,6 +139,12 @@ export async function createApp(
   // Platform Discord webhook — mounted BEFORE boardMutationGuard and JSON middleware
   // (needs raw body for Ed25519 signature validation)
   app.use("/api/platform/discord", discordWebhookRoutes(db));
+  // Slack webhook — authenticated via HMAC-SHA256 (rawBody available from express.json verify)
+  app.use("/api/platform/slack", slackPlatformRoutes(db));
+  // Telegram webhook — authenticated via X-Telegram-Bot-Api-Secret-Token header
+  app.use("/api/platform/telegram", telegramPlatformRoutes(db));
+  // Outbound message router — agents call this to deliver messages to any channel
+  // Mounted inside API (has actorMiddleware for agent/board auth)
 
   // Mount API routes
   const api = Router();
@@ -166,6 +175,7 @@ export async function createApp(
   api.use(sidebarBadgeRoutes(db));
   api.use(instanceSettingsRoutes(db));
   api.use(platformSkillRoutes(db));
+  api.use("/platform/outbound", outboundRoutes(db));
   const hostServicesDisposers = new Map<string, () => void>();
   const workerManager = createPluginWorkerManager();
   const pluginRegistry = pluginRegistryService(db);
