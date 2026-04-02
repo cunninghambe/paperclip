@@ -31,6 +31,8 @@ import { accessRoutes } from "./routes/access.js";
 import { pluginRoutes } from "./routes/plugins.js";
 import { pluginUiStaticRoutes } from "./routes/plugin-ui-static.js";
 import { authBridgeRouter } from "./routes/auth-bridge.js";
+import { discordWebhookRoutes } from "./routes/platform/discord-webhook.js";
+import { platformSkillRoutes } from "./routes/platform-skills.js";
 import { applyUiBranding } from "./ui-branding.js";
 import { logger } from "./middleware/logger.js";
 import { DEFAULT_LOCAL_PLUGIN_DIR, pluginLoader } from "./services/plugin-loader.js";
@@ -131,6 +133,10 @@ export async function createApp(
   }
   app.use(llmRoutes(db));
 
+  // Platform Discord webhook — mounted BEFORE boardMutationGuard and JSON middleware
+  // (needs raw body for Ed25519 signature validation)
+  app.use("/api/platform/discord", discordWebhookRoutes(db));
+
   // Mount API routes
   const api = Router();
   api.use(boardMutationGuard());
@@ -159,6 +165,7 @@ export async function createApp(
   api.use(dashboardRoutes(db));
   api.use(sidebarBadgeRoutes(db));
   api.use(instanceSettingsRoutes(db));
+  api.use(platformSkillRoutes(db));
   const hostServicesDisposers = new Map<string, () => void>();
   const workerManager = createPluginWorkerManager();
   const pluginRegistry = pluginRegistryService(db);
