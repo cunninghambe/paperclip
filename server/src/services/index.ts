@@ -42,3 +42,16 @@ export {
 } from "./merge-queue.js";
 
 export { platformSkillRegistry } from "./platform-skills/index.js";
+export {
+  getUserLayout,
+  getDefaultLayout,
+  saveUserLayout,
+  saveDefaultLayout,
+  type OfficeLayoutRow,
+} from "./office-layout.js";
+export {
+  mapAgentStatusToPresence,
+  getCompanyPresence,
+  type PresenceStatus,
+  type AgentPresence,
+} from "./claw3d-presence.js";

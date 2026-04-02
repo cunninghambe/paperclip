@@ -58,3 +58,6 @@ export { pluginWebhookDeliveries } from "./plugin_webhooks.js";
 export { pluginLogs } from "./plugin_logs.js";
 export { managedOpenRouterKeys } from "./managed_openrouter_keys.js";
 export { channelRoutings } from "./channel_routings.js";
+export { officeLayouts } from "./office_layouts.js";
+export { onboardingSessions } from "./onboarding_sessions.js";
+export type { OnboardingDiscoveryData, OnboardingRecommendationData } from "./onboarding_sessions.js";
