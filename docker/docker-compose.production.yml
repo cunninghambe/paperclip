@@ -6,6 +6,8 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     mem_limit: 4g
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "3100:3100"
     environment:
@@ -35,3 +37,4 @@ networks:
 volumes:
   paperclip-data:
   agent-workspaces:
+
