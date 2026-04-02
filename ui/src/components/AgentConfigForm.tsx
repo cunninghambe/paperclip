@@ -1584,11 +1584,11 @@ function ModelDropdown({
                 ))}
               </div>
             ))}
-            {filteredModels.length === 0 && !canCreateManualModel && (
+            {filteredModels.length === 0 && !canCreateManualModel && !creatable && (
               <div className="px-2 py-2 space-y-2">
                 <p className="text-xs text-muted-foreground">
                   {onDetectModel
-                    ? "No Hermes model detected yet. Configure Hermes or enter a provider/model manually."
+                    ? "Type a model name above (e.g. qwen/qwen3.6-plus:free) and press Enter to use it."
                     : "No models found."}
                 </p>
               </div>
