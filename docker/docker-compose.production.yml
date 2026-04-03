@@ -6,6 +6,8 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     mem_limit: 4g
+    tmpfs:
+      - /tmp:mode=1777,size=2g
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:

@@ -46,8 +46,8 @@ vi.mock("../context/BreadcrumbContext", () => ({
 
 // Mock office API
 vi.mock("../api/office", () => ({
-  officeApi: { getLayout: vi.fn() },
-  officeKeys: { layout: (id: string) => ["office", "layout", id] },
+  officeApi: { getLayout: vi.fn(), getPresence: vi.fn().mockResolvedValue([]), saveLayout: vi.fn().mockResolvedValue(null) },
+  officeKeys: { layout: (id: string) => ["office", "layout", id], presence: (id: string) => ["office", "presence", id] },
 }));
 
 import { useCompany } from "../context/CompanyContext";
