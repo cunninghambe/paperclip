@@ -918,7 +918,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                       value={eff(
                         "adapterConfig",
                         "timeoutSec",
-                        Number(config.timeoutSec ?? 0),
+                        Number(config.timeoutSec ?? 300),
                       )}
                       onCommit={(v) => mark("adapterConfig", "timeoutSec", v)}
                       immediate
