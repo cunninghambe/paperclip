@@ -9,11 +9,8 @@ import type {
 } from "@paperclipai/shared";
 import type { AdapterModel, ClaudeLoginResult } from "../api/agents";
 import { agentsApi } from "../api/agents";
-<<<<<<< HEAD
 import { WebTerminal } from "./WebTerminal";
-=======
 import { openRouterApi } from "../api/openrouter";
->>>>>>> task/18-dynamic-openrouter-models
 import { secretsApi } from "../api/secrets";
 import { assetsApi } from "../api/assets";
 import {
