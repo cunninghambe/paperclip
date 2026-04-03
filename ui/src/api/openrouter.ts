@@ -1,4 +1,4 @@
-import { apiClient } from "./client.js";
+import { api } from "./client.js";
 
 export interface OpenRouterModel {
   id: string;
@@ -11,5 +11,5 @@ export interface OpenRouterModel {
 }
 
 export const openRouterApi = {
-  models: () => apiClient.get<OpenRouterModel[]>("/openrouter/models"),
+  models: () => api.get<OpenRouterModel[]>("/openrouter/models"),
 };

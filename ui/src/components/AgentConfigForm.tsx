@@ -1413,15 +1413,13 @@ function ModelDropdown({
       manualModel &&
       !models.some((m) => m.id.toLowerCase() === manualModel.toLowerCase()),
   );
-  // Dynamic OpenRouter model list
-  const DYNAMIC_MODEL_ADAPTERS = ["hermes_local", "openclaw_gateway", "pi_local"];
+  // Dynamic OpenRouter model list (always fetch — 15-min cache, tiny payload)
   const { data: openRouterModels } = useQuery({
     queryKey: ["openrouter-models"],
     queryFn: openRouterApi.models,
     staleTime: 15 * 60 * 1000,
-    enabled: DYNAMIC_MODEL_ADAPTERS.includes(adapterType),
   });
-  const effectiveModels = models.length > 0 ? models : (openRouterModels ?? []).map(m => ({ id: m.id, label: m.label }));
+  const effectiveModels = models.length > 0 ? models : (openRouterModels ?? []).map((m: { id: string; label: string }) => ({ id: m.id, label: m.label }));
 
   const filteredModels = useMemo(() => {
     return effectiveModels.filter((m) => {
