@@ -9,7 +9,6 @@ import type {
 } from "@paperclipai/shared";
 import type { AdapterModel, ClaudeLoginResult } from "../api/agents";
 import { agentsApi } from "../api/agents";
-import { WebTerminal } from "./WebTerminal";
 import { openRouterApi } from "../api/openrouter";
 import { secretsApi } from "../api/secrets";
 import { assetsApi } from "../api/assets";
@@ -802,24 +801,51 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                 </>
               )}
               {!isCreate && adapterType === "claude_local" && (
-                <div className="border border-amber-500/30 bg-amber-500/5 rounded-lg p-3 space-y-2">
-                  <p className="text-xs font-medium text-amber-600 dark:text-amber-400">Authentication Required</p>
+                <div className="border border-amber-500/30 bg-amber-500/5 rounded-lg p-3 space-y-3">
+                  <p className="text-xs font-medium text-amber-600 dark:text-amber-400">Claude Code Authentication</p>
                   <p className="text-xs text-muted-foreground">
-                    Run <code className="font-mono">claude auth login</code> in the terminal below to authenticate.
+                    Option 1: Set your Anthropic API key (recommended for API billing):
                   </p>
-                  {showTerminal ? (
-                    <WebTerminal companyId={selectedCompanyId!} onClose={() => setShowTerminal(false)} />
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-7 px-2 text-xs"
-                      onClick={() => setShowTerminal(true)}
-                    >
-                      Open Terminal
-                    </Button>
-                  )}
+                  <DraftInput
+                    value={eff("adapterConfig", "anthropicApiKey", String((config as any).anthropicApiKey ?? (config as any).env?.ANTHROPIC_API_KEY ?? ""))}
+                    onCommit={(v) => {
+                      const env = { ...((config as any).env ?? {}) };
+                      if (v) { env.ANTHROPIC_API_KEY = v; } else { delete env.ANTHROPIC_API_KEY; }
+                      mark("adapterConfig", "env", env);
+                    }}
+                    immediate
+                    className={inputClass}
+                    placeholder="sk-ant-... (Anthropic API key)"
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Option 2: Or upload your <code className="font-mono">~/.claude/.credentials.json</code> from your local machine (for subscription auth):
+                  </p>
+                  <input
+                    type="file"
+                    accept=".json"
+                    className="text-xs"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      try {
+                        const text = await file.text();
+                        const creds = JSON.parse(text);
+                        const res = await fetch(`/api/companies/${selectedCompanyId}/claude-credentials`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ credentials: creds }),
+                          credentials: "include",
+                        });
+                        if (res.ok) {
+                          alert("Claude credentials uploaded successfully!");
+                        } else {
+                          alert("Upload failed: " + (await res.text()));
+                        }
+                      } catch (err) {
+                        alert("Invalid JSON file");
+                      }
+                    }}
+                  />
                 </div>
               )}
               {!isCreate && typeof config.bootstrapPromptTemplate === "string" && config.bootstrapPromptTemplate && (

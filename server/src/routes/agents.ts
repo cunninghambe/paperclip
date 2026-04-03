@@ -2108,6 +2108,24 @@ export function agentRoutes(db: Db) {
     res.json(result);
   });
 
+
+  // Upload Claude credentials for a company
+  router.post("/companies/:companyId/claude-credentials", async (req, res) => {
+    assertBoard(req);
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    const { credentials } = req.body as { credentials?: unknown };
+    if (!credentials || typeof credentials !== "object") {
+      res.status(400).json({ error: "credentials must be a JSON object" });
+      return;
+    }
+    const credDir = `/paperclip/credentials/${companyId}/claude`;
+    const fs = await import("node:fs/promises");
+    await fs.mkdir(credDir, { recursive: true });
+    await fs.writeFile(`${credDir}/.credentials.json`, JSON.stringify(credentials, null, 2));
+    res.json({ ok: true, path: `${credDir}/.credentials.json` });
+  });
+
   router.get("/companies/:companyId/heartbeat-runs", async (req, res) => {
     const companyId = req.params.companyId as string;
     assertCompanyAccess(req, companyId);
