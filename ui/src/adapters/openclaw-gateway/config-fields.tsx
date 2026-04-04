@@ -116,23 +116,6 @@ export function OpenClawGatewayConfigFields({
         />
       </Field>
 
-      <Field label="Model" hint="LLM model for this agent (overrides gateway default). Leave blank to use gateway default.">
-        <DraftInput
-          value={
-            isCreate
-              ? (values!.model ?? "")
-              : eff("adapterConfig", "model", String(config.model ?? ""))
-          }
-          onCommit={(v) =>
-            isCreate
-              ? set!({ model: v })
-              : mark("adapterConfig", "model", v || undefined)
-          }
-          immediate
-          className={inputClass}
-          placeholder="anthropic/claude-sonnet-4-6"
-        />
-      </Field>
 
       <PayloadTemplateJsonField
         isCreate={isCreate}
