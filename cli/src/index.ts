@@ -18,6 +18,7 @@ import { registerDashboardCommands } from "./commands/client/dashboard.js";
 import { applyDataDirOverride, type DataDirOptionLike } from "./config/data-dir.js";
 import { loadPaperclipEnvFile } from "./config/env.js";
 import { registerWorktreeCommands } from "./commands/worktree.js";
+import { registerMcpCommand } from "./commands/mcp.js";
 import { registerPluginCommands } from "./commands/client/plugin.js";
 import { registerClientAuthCommands } from "./commands/client/auth.js";
 
@@ -154,6 +155,7 @@ auth
 
 registerClientAuthCommands(auth);
 
+registerMcpCommand(program);
 program.parseAsync().catch((err) => {
   console.error(err instanceof Error ? err.message : String(err));
   process.exit(1);
