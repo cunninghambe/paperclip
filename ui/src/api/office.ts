@@ -50,18 +50,20 @@ function calcGridSize(count: number): { rows: number; cols: number } {
 export const officeApi = {
   async getLayout(companyId: string): Promise<OfficeLayout> {
     try {
-      return await api.get<OfficeLayout>(`/companies/${companyId}/office/layout`);
+      const layout = await api.get<OfficeLayout | null>(`/companies/${companyId}/office/layout`);
+      if (layout && layout.agents?.length) return layout;
     } catch {
-      // Fallback: transform agents list into office layout
-      const agents = await agentsApi.list(companyId);
-      const officeAgents = agents
-        .filter((a) => a.status !== "terminated")
-        .map(agentToOfficeAgent);
-      return {
-        agents: officeAgents,
-        gridSize: calcGridSize(officeAgents.length),
-      };
+      // Fall through to agent-based layout
     }
+    // Fallback: transform agents list into office layout
+    const agents = await agentsApi.list(companyId);
+    const officeAgents = agents
+      .filter((a) => a.status !== "terminated")
+      .map(agentToOfficeAgent);
+    return {
+      agents: officeAgents,
+      gridSize: calcGridSize(officeAgents.length),
+    };
   },
 
   async saveLayout(
