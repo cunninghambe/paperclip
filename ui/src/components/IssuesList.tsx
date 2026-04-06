@@ -173,6 +173,7 @@ interface IssuesListProps {
   };
   onSearchChange?: (search: string) => void;
   onUpdateIssue: (id: string, data: Record<string, unknown>) => void;
+  defaultViewMode?: "list" | "board";
 }
 
 interface IssuesSearchInputProps {
@@ -228,6 +229,7 @@ export function IssuesList({
   searchFilters,
   onSearchChange,
   onUpdateIssue,
+  defaultViewMode,
 }: IssuesListProps) {
   const { selectedCompanyId } = useCompany();
   const { openNewIssue } = useDialog();
@@ -244,7 +246,11 @@ export function IssuesList({
     if (initialAssignees) {
       return { ...defaultViewState, assignees: initialAssignees, statuses: [] };
     }
-    return getViewState(scopedKey);
+    const saved = getViewState(scopedKey);
+    if (defaultViewMode && !localStorage.getItem(scopedKey)) {
+      saved.viewMode = defaultViewMode;
+    }
+    return saved;
   });
   const [assigneePickerIssueId, setAssigneePickerIssueId] = useState<string | null>(null);
   const [assigneeSearch, setAssigneeSearch] = useState("");
@@ -260,9 +266,13 @@ export function IssuesList({
   useEffect(() => {
     if (prevScopedKey.current !== scopedKey) {
       prevScopedKey.current = scopedKey;
-      setViewState(initialAssignees
+      const next = initialAssignees
         ? { ...defaultViewState, assignees: initialAssignees, statuses: [] }
-        : getViewState(scopedKey));
+        : getViewState(scopedKey);
+      if (defaultViewMode && !localStorage.getItem(scopedKey)) {
+        next.viewMode = defaultViewMode;
+      }
+      setViewState(next);
     }
   }, [scopedKey, initialAssignees]);
 
