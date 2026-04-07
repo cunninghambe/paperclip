@@ -57,7 +57,7 @@ ARG USER_UID=1000
 ARG USER_GID=1000
 WORKDIR /app
 COPY --from=build /app /app
-RUN npm install --global --omit=dev @anthropic-ai/claude-code@latest @openai/codex@latest opencode-ai \
+RUN npm install --global --omit=dev @anthropic-ai/claude-code@latest @openai/codex@latest opencode-ai vercel \
   && git clone --depth 1 https://github.com/NousResearch/hermes-agent.git /tmp/hermes-agent \
   && pip3 install --no-cache-dir --break-system-packages /tmp/hermes-agent \
   && rm -rf /tmp/hermes-agent \

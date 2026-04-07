@@ -115,8 +115,8 @@ export function OnboardingWizard() {
 
   // Step 2
   const [agentName, setAgentName] = useState("CEO");
-  const [adapterType, setAdapterType] = useState<AdapterType>("claude_local");
-  const [model, setModel] = useState("");
+  const [adapterType, setAdapterType] = useState<AdapterType>("hermes_local");
+  const [model, setModel] = useState("qwen/qwen3.6-plus:free");
   const [command, setCommand] = useState("");
   const [args, setArgs] = useState("");
   const [url, setUrl] = useState("");
@@ -290,8 +290,8 @@ export function OnboardingWizard() {
     setCompanyName("");
     setCompanyGoal("");
     setAgentName("CEO");
-    setAdapterType("claude_local");
-    setModel("");
+    setAdapterType("hermes_local");
+    setModel("qwen/qwen3.6-plus:free");
     setCommand("");
     setArgs("");
     setUrl("");
@@ -643,7 +643,7 @@ export function OnboardingWizard() {
           <div
             className={cn(
               "w-full flex flex-col overflow-y-auto transition-[width] duration-500 ease-in-out",
-              step === 1 ? "md:w-1/2" : "md:w-full"
+              "md:w-full"
             )}
           >
             <div className="w-full max-w-md mx-auto my-auto px-8 py-12 shrink-0">
@@ -675,19 +675,7 @@ export function OnboardingWizard() {
               </div>
 
               {/* Step content */}
-              {step === 1 && !existingCompanyId && (
-                <OnboardingChat
-                  onComplete={(companyId, companyPrefix) => {
-                    setCreatedCompanyId(companyId);
-                    setCreatedCompanyPrefix(companyPrefix);
-                    setSelectedCompanyId(companyId);
-                    queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
-                    // Skip to step 4 (launch) since concierge provisioned everything
-                    setStep(4);
-                  }}
-                />
-              )}
-              {step === 1 && existingCompanyId && (
+              {step === 1 && (
                 <div className="space-y-5">
                   <div className="flex items-center gap-3 mb-1">
                     <div className="bg-muted/50 p-2">
@@ -774,18 +762,25 @@ export function OnboardingWizard() {
                     <div className="grid grid-cols-2 gap-2">
                       {[
                         {
+                          value: "hermes_local" as const,
+                          label: "Hermes Agent",
+                          icon: HermesIcon,
+                          desc: "Local multi-provider agent",
+                          recommended: true
+                        },
+                        {
                           value: "claude_local" as const,
                           label: "Claude Code",
                           icon: Sparkles,
                           desc: "Local Claude agent",
-                          recommended: true
+                          recommended: false
                         },
                         {
                           value: "codex_local" as const,
                           label: "Codex",
                           icon: Code,
                           desc: "Local Codex agent",
-                          recommended: true
+                          recommended: false
                         }
                       ].map((opt) => (
                         <button
@@ -799,10 +794,11 @@ export function OnboardingWizard() {
                           onClick={() => {
                             const nextType = opt.value as AdapterType;
                             setAdapterType(nextType);
-                            if (nextType === "codex_local" && !model) {
+                            if (nextType === "hermes_local") {
+                              setModel("qwen/qwen3.6-plus:free");
+                            } else if (nextType === "codex_local") {
                               setModel(DEFAULT_CODEX_LOCAL_MODEL);
-                            }
-                            if (nextType !== "codex_local") {
+                            } else {
                               setModel("");
                             }
                           }}
@@ -860,12 +856,6 @@ export function OnboardingWizard() {
                             label: "Cursor",
                             icon: MousePointer2,
                             desc: "Local Cursor agent"
-                          },
-                          {
-                            value: "hermes_local" as const,
-                            label: "Hermes Agent",
-                            icon: HermesIcon,
-                            desc: "Local multi-provider agent"
                           },
                           {
                             value: "openclaw_gateway" as const,
@@ -1341,15 +1331,6 @@ export function OnboardingWizard() {
             </div>
           </div>
 
-          {/* Right half — ASCII art (hidden on mobile) */}
-          <div
-            className={cn(
-              "hidden md:block overflow-hidden bg-[#1d1d1d] transition-[width,opacity] duration-500 ease-in-out",
-              step === 1 ? "w-1/2 opacity-100" : "w-0 opacity-0"
-            )}
-          >
-            <AsciiArtAnimation />
-          </div>
         </div>
       </DialogPortal>
     </Dialog>

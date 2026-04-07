@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { Request, RequestHandler } from "express";
 import { and, eq, isNull } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
-import { agentApiKeys, agents, companyMemberships, instanceUserRoles } from "@paperclipai/db";
+import { agentApiKeys, agents, companyMemberships, heartbeatRuns, instanceUserRoles } from "@paperclipai/db";
 import { verifyLocalAgentJwt } from "../agent-auth-jwt.js";
 import type { DeploymentMode } from "@paperclipai/shared";
 import type { BetterAuthSessionResult } from "../auth/better-auth.js";
@@ -71,7 +71,38 @@ export function actorMiddleware(db: Db, opts: ActorMiddlewareOptions): RequestHa
           return;
         }
       }
-      if (runIdHeader) req.actor.runId = runIdHeader;
+      // ── Auto-auth for localhost agent requests with a valid run ID ──────
+      // Agents running inside the container call curl without auth headers.
+      // If the request is from localhost and has a valid X-Paperclip-Run-Id,
+      // look up the active run → authenticate as the owning agent.
+      if (runIdHeader) {
+        const remoteIp = req.ip || req.socket?.remoteAddress || "";
+        const isLocalhost = remoteIp === "127.0.0.1" || remoteIp === "::1" || remoteIp === "::ffff:127.0.0.1";
+        if (isLocalhost) {
+          try {
+            const [run] = await db
+              .select({ agentId: heartbeatRuns.agentId, companyId: heartbeatRuns.companyId })
+              .from(heartbeatRuns)
+              .where(and(eq(heartbeatRuns.id, runIdHeader), eq(heartbeatRuns.status, "running")))
+              .limit(1);
+            if (run) {
+              req.actor = {
+                type: "agent",
+                agentId: run.agentId,
+                companyId: run.companyId,
+                keyId: undefined,
+                runId: runIdHeader,
+                source: "localhost_run_id",
+              };
+              next();
+              return;
+            }
+          } catch (err) {
+            logger.warn({ err, runId: runIdHeader }, "Failed localhost run-id auth lookup");
+          }
+        }
+        req.actor.runId = runIdHeader;
+      }
       next();
       return;
     }

@@ -72,6 +72,8 @@ export function accessService(db: Db) {
   ): Promise<boolean> {
     if (!userId) return false;
     if (await isInstanceAdmin(userId)) return true;
+    const membership = await getMembership(companyId, "user", userId);
+    if (membership?.membershipRole === "owner" && membership.status === "active") return true;
     return hasPermission(companyId, "user", userId, permissionKey);
   }
 

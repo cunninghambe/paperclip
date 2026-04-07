@@ -54,6 +54,7 @@ import {
   resolveExecutionWorkspaceMode,
 } from "./execution-workspace-policy.js";
 import { instanceSettingsService } from "./instance-settings.js";
+import { resolveGitHubTokenForWorkspace, configureGitCredentials } from "./github-app.js";
 import { redactCurrentUserText, redactCurrentUserValue } from "../log-redaction.js";
 import {
   hasSessionCompactionThresholds,
@@ -75,6 +76,7 @@ const SESSIONED_LOCAL_ADAPTERS = new Set([
   "codex_local",
   "cursor",
   "gemini_local",
+  "hermes_local",
   "opencode_local",
   "pi_local",
 ]);
@@ -2635,6 +2637,28 @@ export function heartbeatService(db: Db) {
           ...existingEnv,
         };
       }
+      // Inject GitHub App installation token if configured
+      const githubToken = await resolveGitHubTokenForWorkspace(db, {
+        repoUrl: executionWorkspace.repoUrl,
+        projectWorkspaceId: resolvedProjectWorkspaceId,
+      });
+      if (githubToken) {
+        const currentEnv = parseObject(resolvedConfig.env) as Record<string, unknown>;
+        resolvedConfig.env = {
+          GITHUB_TOKEN: githubToken,
+          GIT_ASKPASS: "/bin/echo",
+          ...currentEnv,
+        };
+        secretKeys.add("GITHUB_TOKEN");
+        // Configure git credential helper in workspace so push works transparently
+        if (executionWorkspace.cwd) {
+          await configureGitCredentials(
+            executionWorkspace.cwd,
+            githubToken,
+            executionWorkspace.repoUrl,
+          );
+        }
+      }
       const adapterEnv = Object.fromEntries(
         Object.entries(parseObject(resolvedConfig.env)).filter(
           (entry): entry is [string, string] => typeof entry[0] === "string" && typeof entry[1] === "string",
@@ -4021,17 +4045,39 @@ export function heartbeatService(db: Db) {
         const elapsedMs = now.getTime() - baseline;
         if (elapsedMs < policy.intervalSec * 1000) continue;
 
+        // Look up agent's first assigned open issue to provide project context
+        const contextSnapshot: Record<string, unknown> = {
+          source: "scheduler",
+          reason: "interval_elapsed",
+          now: now.toISOString(),
+        };
+        try {
+          const [assignedIssue] = await db
+            .select({ projectId: issues.projectId, id: issues.id })
+            .from(issues)
+            .where(
+              and(
+                eq(issues.assigneeAgentId, agent.id),
+                eq(issues.companyId, agent.companyId),
+                inArray(issues.status, ["todo", "in_progress"]),
+              ),
+            )
+            .limit(1);
+          if (assignedIssue?.projectId) {
+            contextSnapshot.projectId = assignedIssue.projectId;
+            contextSnapshot.issueId = assignedIssue.id;
+          }
+        } catch (_e) {
+          // Non-fatal: timer still works without project context
+        }
+
         const run = await enqueueWakeup(agent.id, {
           source: "timer",
           triggerDetail: "system",
           reason: "heartbeat_timer",
           requestedByActorType: "system",
           requestedByActorId: "heartbeat_scheduler",
-          contextSnapshot: {
-            source: "scheduler",
-            reason: "interval_elapsed",
-            now: now.toISOString(),
-          },
+          contextSnapshot,
         });
         if (run) enqueued += 1;
         else skipped += 1;

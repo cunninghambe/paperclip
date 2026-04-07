@@ -29,6 +29,8 @@ services:
       OPENCLAW_GATEWAY_URL: "${OPENCLAW_GATEWAY_URL:-ws://host.docker.internal:4200}"
       PAPERCLIP_AGENT_JWT_SECRET: "${PAPERCLIP_AGENT_JWT_SECRET:-}"
       OPENCLAW_GATEWAY_TOKEN: "${OPENCLAW_GATEWAY_TOKEN:-}"
+      VERCEL_TOKEN: "${VERCEL_TOKEN:-}"
+      KANBAN_API_KEY: "${KANBAN_API_KEY:-}"
     volumes:
       - paperclip-data:/paperclip
       - agent-workspaces:/workspaces
