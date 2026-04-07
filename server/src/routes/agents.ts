@@ -46,7 +46,7 @@ import {
 import { conflict, forbidden, notFound, unprocessable } from "../errors.js";
 import { assertBoard, assertCompanyAccess, assertInstanceAdmin, getActorInfo } from "./authz.js";
 import { findServerAdapter, listAdapterModels, detectAdapterModel } from "../adapters/index.js";
-import { redactEventPayload } from "../redaction.js";
+import { redactEventPayload, REDACTED_EVENT_VALUE } from "../redaction.js";
 import { redactCurrentUserValue } from "../log-redaction.js";
 import { renderOrgChartSvg, renderOrgChartPng, type OrgNode, type OrgChartStyle, ORG_CHART_STYLES } from "./org-chart-svg.js";
 import { instanceSettingsService } from "../services/instance-settings.js";
@@ -158,8 +158,16 @@ export function agentRoutes(db: Db) {
       buildAgentAccessState(agent),
     ]);
 
+    const base = options?.restricted
+      ? redactForRestrictedAgentView(agent)
+      : {
+          ...agent,
+          adapterConfig: redactEventPayload(agent.adapterConfig),
+          runtimeConfig: redactEventPayload(agent.runtimeConfig),
+        };
+
     return {
-      ...(options?.restricted ? redactForRestrictedAgentView(agent) : agent),
+      ...base,
       chainOfCommand,
       access: accessState,
     };
@@ -858,7 +866,11 @@ export function agentRoutes(db: Db) {
     const result = await svc.list(companyId);
     const canReadConfigs = await actorCanReadConfigurationsForCompany(req, companyId);
     if (canReadConfigs || req.actor.type === "board") {
-      res.json(result);
+      res.json(result.map((agent) => ({
+        ...agent,
+        adapterConfig: redactEventPayload(agent.adapterConfig),
+        runtimeConfig: redactEventPayload(agent.runtimeConfig),
+      })));
       return;
     }
     res.json(result.map((agent) => redactForRestrictedAgentView(agent)));
@@ -1743,7 +1755,17 @@ export function agentRoutes(db: Db) {
       if (changingInstructionsPath) {
         await assertCanManageInstructionsPath(req, existing);
       }
-      patchData.adapterConfig = adapterConfig;
+      // Strip redacted sentinel values so the existing secrets are preserved
+      // when the UI sends back "***REDACTED***" for fields it couldn't display.
+      const cleaned: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(adapterConfig)) {
+        if (v === REDACTED_EVENT_VALUE) continue;
+        if (v && typeof v === "object" && !Array.isArray(v)
+          && (v as Record<string, unknown>).type === "plain"
+          && (v as Record<string, unknown>).value === REDACTED_EVENT_VALUE) continue;
+        cleaned[k] = v;
+      }
+      patchData.adapterConfig = cleaned;
     }
 
     const requestedAdapterType =
