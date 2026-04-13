@@ -1,10 +1,14 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Building2, Save } from "lucide-react";
+import { Building2, FolderOpen, Save } from "lucide-react";
 import { useCompany } from "../context/CompanyContext";
 import { useBreadcrumbs } from "../context/BreadcrumbContext";
 import { officeApi, officeKeys } from "../api/office";
 import type { OfficeAgent } from "../api/office";
+import { heartbeatsApi } from "../api/heartbeats";
+import { executionWorkspacesApi } from "../api/execution-workspaces";
+import { queryKeys } from "../lib/queryKeys";
+import { useNavigate } from "@/lib/router";
 import { PageSkeleton } from "../components/PageSkeleton";
 import { EmptyState } from "../components/EmptyState";
 import { AgentPresenceSummary } from "../components/office/AgentPresenceSummary";
@@ -18,6 +22,7 @@ export default function OfficePage() {
   const { selectedCompanyId } = useCompany();
   const { setBreadcrumbs } = useBreadcrumbs();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [selectedAgent, setSelectedAgent] = useState<OfficeAgent | null>(null);
   const [pendingLayout, setPendingLayout] = useState<Record<string, unknown> | null>(null);
 
@@ -39,6 +44,24 @@ export default function OfficePage() {
     enabled: !!selectedCompanyId,
     refetchInterval: 10_000,
   });
+
+  // Fetch most recent heartbeat run for the selected agent to find its issueId
+  const { data: agentRuns } = useQuery({
+    queryKey: queryKeys.heartbeats(selectedCompanyId ?? "", selectedAgent?.id),
+    queryFn: () => heartbeatsApi.list(selectedCompanyId!, selectedAgent!.id, 1),
+    enabled: !!selectedCompanyId && !!selectedAgent,
+  });
+
+  const issueId = (agentRuns?.[0]?.contextSnapshot?.["issueId"] as string | undefined) ?? null;
+
+  // Fetch workspace for that issue when available
+  const { data: issueWorkspaces } = useQuery({
+    queryKey: queryKeys.executionWorkspaces.list(selectedCompanyId ?? "", { issueId: issueId ?? undefined }),
+    queryFn: () => executionWorkspacesApi.list(selectedCompanyId!, { issueId: issueId! }),
+    enabled: !!selectedCompanyId && !!issueId,
+  });
+
+  const activeWorkspace = issueWorkspaces?.find((w) => w.status === "active" || w.status === "idle") ?? null;
 
   const saveMutation = useMutation({
     mutationFn: (layoutData: Record<string, unknown>) =>
@@ -118,6 +141,15 @@ export default function OfficePage() {
             <p className="mt-1 text-xs text-muted-foreground capitalize">{selectedAgent.status}</p>
             {selectedAgent.currentTask && (
               <p className="mt-1 text-xs text-muted-foreground truncate">{selectedAgent.currentTask}</p>
+            )}
+            {activeWorkspace && (
+              <button
+                onClick={() => navigate(`/execution-workspaces/${activeWorkspace.id}/browse`)}
+                className="mt-2 flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <FolderOpen className="h-4 w-4" />
+                Browse Files
+              </button>
             )}
           </div>
         )}

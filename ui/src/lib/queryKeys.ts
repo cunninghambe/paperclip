@@ -65,6 +65,14 @@ export const queryKeys = {
     detail: (id: string) => ["execution-workspaces", "detail", id] as const,
     closeReadiness: (id: string) => ["execution-workspaces", "close-readiness", id] as const,
     workspaceOperations: (id: string) => ["execution-workspaces", "workspace-operations", id] as const,
+    files: (id: string, dirPath: string) =>
+      ["execution-workspaces", "files", id, dirPath] as const,
+    fileContent: (id: string, filePath: string) =>
+      ["execution-workspaces", "file-content", id, filePath] as const,
+    gitDiff: (id: string) =>
+      ["execution-workspaces", "git-diff", id] as const,
+    gitStatus: (id: string) =>
+      ["execution-workspaces", "git-status", id] as const,
   },
   projects: {
     list: (companyId: string) => ["projects", companyId] as const,

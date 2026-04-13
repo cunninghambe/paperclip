@@ -16,3 +16,4 @@ export { llmRoutes } from "./llms.js";
 export { accessRoutes } from "./access.js";
 export { instanceSettingsRoutes } from "./instance-settings.js";
 export { officeLayoutRoutes } from "./office-layout.js";
+export { workspaceFilesRoutes } from "./workspace-files.js";

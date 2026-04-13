@@ -1,6 +1,44 @@
 import type { ExecutionWorkspace, ExecutionWorkspaceCloseReadiness, WorkspaceOperation } from "@paperclipai/shared";
 import { api } from "./client";
 
+export interface FileEntry {
+  name: string;
+  path: string;
+  kind: "file" | "dir" | "symlink";
+  size: number;
+  modifiedAt: string;
+}
+
+export interface FileContent {
+  path: string;
+  content: string;
+  size: number;
+  binary: boolean;
+  language: string;
+}
+
+export interface WorkspaceDiff {
+  baseRef: string;
+  headRef: string;
+  files: DiffFile[];
+  stats: { additions: number; deletions: number; filesChanged: number };
+}
+
+export interface DiffFile {
+  path: string;
+  status: "added" | "modified" | "deleted" | "renamed";
+  additions: number;
+  deletions: number;
+  oldPath?: string;
+  patch: string;
+}
+
+export interface GitFileStatus {
+  path: string;
+  status: "modified" | "added" | "deleted" | "renamed" | "untracked";
+  staged: boolean;
+}
+
 export const executionWorkspacesApi = {
   list: (
     companyId: string,
@@ -32,4 +70,14 @@ export const executionWorkspacesApi = {
       {},
     ),
   update: (id: string, data: Record<string, unknown>) => api.patch<ExecutionWorkspace>(`/execution-workspaces/${id}`, data),
+  listFiles: (id: string, dirPath: string = ".") =>
+    api.get<FileEntry[]>(`/execution-workspaces/${id}/files?path=${encodeURIComponent(dirPath)}`),
+  getFileContent: (id: string, filePath: string) =>
+    api.get<FileContent>(`/execution-workspaces/${id}/files/content?path=${encodeURIComponent(filePath)}`),
+  getGitDiff: (id: string) =>
+    api.get<WorkspaceDiff>(`/execution-workspaces/${id}/git/diff`),
+  getGitStatus: (id: string) =>
+    api.get<GitFileStatus[]>(`/execution-workspaces/${id}/git/status`),
+  downloadUrl: (id: string, filePath: string) =>
+    `/api/execution-workspaces/${id}/files/download?path=${encodeURIComponent(filePath)}`,
 };

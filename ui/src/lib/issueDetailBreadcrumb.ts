@@ -1,4 +1,4 @@
-type IssueDetailSource = "issues" | "inbox";
+type IssueDetailSource = "issues" | "inbox" | "kanban";
 
 type IssueDetailBreadcrumb = {
   label: string;
@@ -37,6 +37,7 @@ function readIssueDetailSourceFromSearch(search?: string): IssueDetailSource | n
 
 function breadcrumbForSource(source: IssueDetailSource): IssueDetailBreadcrumb {
   if (source === "inbox") return { label: "Inbox", href: "/inbox" };
+  if (source === "kanban") return { label: "Kanban Board", href: "/kanban" };
   return { label: "Issues", href: "/issues" };
 }
 

@@ -34,6 +34,8 @@ services:
       GITHUB_APP_DEFAULT_INSTALLATION_ID: "${GITHUB_APP_DEFAULT_INSTALLATION_ID:-}"
     volumes:
       - paperclip-data:/paperclip
+      # Share host Claude Code credentials so claude_local agents can use subscription auth
+      - ${HOME}/.claude/.credentials.json:/paperclip/.claude/.credentials.json:ro
     depends_on:
       db:
         condition: service_healthy

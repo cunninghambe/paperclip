@@ -1193,7 +1193,7 @@ export function agentRoutes(db: Db) {
 
   router.post("/companies/:companyId/agent-hires", validate(createAgentHireSchema), async (req, res) => {
     const companyId = req.params.companyId as string;
-    await assertCanCreateAgentsForCompany(req, companyId);
+    const hireActorAgent = await assertCanCreateAgentsForCompany(req, companyId);
     const sourceIssueIds = parseSourceIssueIds(req.body);
     const {
       desiredSkills: requestedDesiredSkills,
@@ -1304,6 +1304,13 @@ export function agentRoutes(db: Db) {
           agentId: actor.actorType === "agent" ? actor.actorId : null,
           userId: actor.actorType === "user" ? actor.actorId : null,
         });
+      }
+
+      // Auto-approve CEO-initiated hires so the CEO doesn't block on board review.
+      // The approval record is still created above for the audit trail.
+      if (hireActorAgent && canCreateAgents(hireActorAgent)) {
+        await approvalsSvc.approve(approval.id, "auto:ceo-hire", "Auto-approved: CEO-initiated hire");
+        approval = await approvalsSvc.getById(approval.id);
       }
     }
 

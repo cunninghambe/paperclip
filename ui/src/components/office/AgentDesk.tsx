@@ -86,9 +86,10 @@ export interface AgentDeskProps {
   position: [number, number, number];
   floorBounds: { halfW: number; halfD: number };
   onSelect?: (agent: OfficeAgent) => void;
+  hasActiveWorkspace?: boolean;
 }
 
-export function AgentDesk({ agent, position, floorBounds, onSelect }: AgentDeskProps) {
+export function AgentDesk({ agent, position, floorBounds, onSelect, hasActiveWorkspace }: AgentDeskProps) {
   const figureRef = useRef<Group>(null);
   const labelRef = useRef<Group>(null);
   const [hovered, setHovered] = useState(false);
@@ -251,7 +252,7 @@ export function AgentDesk({ agent, position, floorBounds, onSelect }: AgentDeskP
       <mesh position={[0, 0.75, -0.3]} castShadow>
         <boxGeometry args={[0.9, 0.55, 0.04]} />
         <meshStandardMaterial
-          color={agent.status === "active" ? "#0f172a" : "#111118"}
+          color={hasActiveWorkspace ? "#1a3a4e" : agent.status === "active" ? "#0f172a" : "#111118"}
           emissive={agent.status === "active" ? "#334155" : "#000000"}
           emissiveIntensity={agent.status === "active" ? 0.3 : 0}
         />

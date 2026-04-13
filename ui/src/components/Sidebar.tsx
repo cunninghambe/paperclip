@@ -4,6 +4,7 @@ import {
   Target,
   LayoutDashboard,
   DollarSign,
+  FolderOpen,
   History,
   Search,
   SquarePen,
@@ -113,6 +114,7 @@ export function Sidebar() {
           <SidebarNavItem to="/org" label="Org" icon={Network} />
           <SidebarNavItem to="/office" label="3D Office" icon={Building2} />
           <SidebarNavItem to="/kanban" label="Kanban" icon={Kanban} />
+          <SidebarNavItem to="/execution-workspaces" label="Workspaces" icon={FolderOpen} />
           <SidebarNavItem to="/skills" label="Skills" icon={Boxes} />
           <SidebarNavItem to="/costs" label="Costs" icon={DollarSign} />
           <SidebarNavItem to="/activity" label="Activity" icon={History} />
